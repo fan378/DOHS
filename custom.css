@@ -1,0 +1,30 @@
+.container {
+    height: 75vh !important;
+    overflow-y: scroll !important;
+}
+
+.container1 {
+    height: 75vh;
+}
+
+body .docx {
+    zoom: 0.75 !important;
+    padding: 6% 9% !important;
+}
+
+.app {
+    margin: 3% 1%;
+    max-width: 94% !important;
+}
+
+.wrap.svelte-1p9xokt.svelte-1p9xokt.svelte-1p9xokt {
+    height: 100%;
+}
+
+.td .span {
+    color: red;
+}
+
+.highlight {
+    background-color: yellow;
+}

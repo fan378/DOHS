@@ -1,0 +1,394 @@
+import os
+# from transformers import AutoModel, AutoTokenizer
+import gradio as gr
+import json
+
+import numpy as np
+import global_variable
+import subprocess
+import sys
+import pipeline4fuza
+import pipeline4simple
+from datetime import datetime, timedelta
+import threading
+import warnings
+import process_ori_datas_1
+import get_instructions_1201
+from py_cyxj_2024_0324_change import *
+# from py_cyxj_202407_gys import *
+import process_csv
+import pipeline_wjc
+from postprocess_wjc import *
+# from postprocess_gys import *
+import shutil
+import gc
+import re
+import jsonlines
+import os
+from commons.constants import *
+os.CUDA_LAUNCH_BLOCKING = 1
+warnings.filterwarnings("ignore")
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+
+# 当路径不存在时，创建文件夹
+def create_dir(dir_path):
+    if not os.path.exists(dir_path):
+        os.mkdir(dir_path)
+
+# 创建空文件夹
+def create_empty_dir(dir_path):
+    if os.path.exists(dir_path):
+        shutil.rmtree(dir_path)
+    os.mkdir(dir_path)
+
+# 删除文件夹
+def delete_dir(dir_path):
+    if os.path.exists(dir_path):
+        shutil.rmtree(dir_path)
+
+# 上传原始材料
+def upload_file(file):
+    # path = file.name
+    if which_model == 'ruxianwaike_singlecuda' or which_model == 'ruxianwaike':
+        create_empty_dir('乳腺外科示例')
+        for item in file:
+            src_file = item.name
+            dest_file = '乳腺外科示例/'+src_file.split('/')[-1]
+            shutil.move(src_file, dest_file)
+        data_dir = '乳腺外科示例'
+        out_dir = 'processed'
+        df_datas,json_datas = process_ori_datas_1.process_and_merge(data_dir,out_dir)
+        global_variable.set_value('key_id',next(iter(json_datas)))
+        global_variable.set_value('file_path',out_dir + '/合并.json')
+    elif which_model == 'quankeshi':
+        temp_input_csv_path = './temp/input_csv_path'
+        temp_processed_path = './temp/processed_path'
+        create_empty_dir(temp_input_csv_path)
+        create_empty_dir(temp_processed_path)
+        for item in file:
+            src_file = item.name
+            dest_file = f'{temp_input_csv_path}/'+src_file.split('/')[-1]
+            shutil.move(src_file, dest_file)
+        merged_df,json_datas,cyxjs = process_csv.process_and_merge(temp_input_csv_path,temp_processed_path)
+        zylsh = next(iter(json_datas))
+        global_variable.set_value('key_id',zylsh)
+        processed_out_dir = global_variable.get_value('processed_out_dir')
+        keshi = global_variable.get_value('keshi')
+        print(processed_out_dir,keshi, zylsh)
+        processed_out_path = os.path.join(processed_out_dir,keshi, zylsh)
+        create_dir(processed_out_path)
+        for filename in os.listdir(temp_processed_path):
+            shutil.copy(os.path.join(temp_processed_path,filename), processed_out_path) 
+        ############################################################################
+        # 提取出院小结
+        for (zylsh,cyxj) in cyxjs:
+            doctor_generated_path = global_variable.get_value('doctor_generated_path')
+            create_dir(os.path.join(doctor_generated_path,keshi,zylsh))
+            with open(f'{doctor_generated_path}/{keshi}/{zylsh}/{zylsh}.json','w',encoding='utf-8') as f:
+                json.dump(cyxj,f,indent=4,ensure_ascii=False)
+        ############################################################################
+
+    return json.dumps(json_datas,indent=4,ensure_ascii=False)
+
+# 获取当前系统时间
+def get_time():
+    # now = datetime.now() + timedelta(hours=8)
+    now = datetime.now()
+    current_time = now.strftime("%Y-%m-%d %H:%M:%S")
+    return current_time
+
+# 对终端输出做换行处理并添加是时间
+def capture_stdout_and_append_to_array(text):
+    global std_out_list
+    # 解码并将结果添加到数组中
+    if text.strip():
+        text = re.sub('\n',f'\n{get_time()}:',text)
+        std_out_list.append(f'{get_time()}:{text}\n')
+
+# 返回当前终端的输出并在每条输出前添加时间
+def current_stdout():
+    def inner():
+        global std_out_list
+        current_time = get_time()
+        if std_out_list == []:
+            return str(current_time)
+        else:
+            return ''.join(std_out_list)
+    return inner
+
+# 生成出院小结
+def generate_file():
+    global std_out_list
+
+    original_write = sys.stdout.write
+    sys.stdout.write = capture_stdout_and_append_to_array
+
+    current_time = get_time()
+    std_out_list =[]
+    std_out_list.append(f"{current_time}:文件提交成功\n")
+
+    # 读取全局变量
+    key_id = global_variable.get_value('key_id')
+    file_path = global_variable.get_value('file_path')
+
+    # 转指令数据
+    if which_model == 'ruxianwaike_singlecuda' or which_model == 'ruxianwaike':
+        data_dir = './processed/new_最终处理并合并后数据.csv'
+        out_dir = './instructions'
+        ins_datas_v1201 = get_instructions_1201.get_instructions_v1201(data_dir,out_dir,'ruxianwaike')
+    elif which_model == 'quankeshi':
+        zylsh = global_variable.get_value('key_id')
+        keshi = global_variable.get_value('keshi')
+        processed_out_dir = global_variable.get_value('processed_out_dir')
+        csv_data_path = os.path.join(processed_out_dir,keshi,zylsh,'new_最终处理并合并后数据.csv')
+        ins_out_dir = global_variable.get_value('ins_out_dir')
+        exact_ins_out_dir = os.path.join(ins_out_dir,keshi,zylsh)
+        ins_datas_v2024_0324 = get_instructions_v2024_0324(csv_data_path,exact_ins_out_dir,keshi,zylsh)
+
+    if which_model == 'ruxianwaike_singlecuda': # 单卡乳腺外科推理
+        singlemodel,singletokenizer = global_variable.load_model('model1',cuda_DEVICE[0])
+        # 执行命令
+        thread1 = threading.Thread(target=pipeline4fuza.main, args=(singlemodel,singletokenizer,key_id,file_path))
+        thread1.start()
+        thread1.join()
+        # 清除空间
+        del singlemodel,singletokenizer
+        gc.collect()
+        # 训练后模型
+        singlemodel,singletokenizer = global_variable.load_model('model2',cuda_DEVICE[0])
+        thread2 = threading.Thread(target=pipeline4simple.main, args=(singlemodel,singletokenizer,ins_datas_v1201,key_id))
+        thread2.start()
+        thread2.join()
+        # 合并处理结果
+        cmd = 'python pipeline_total.py '+ key_id + ' \\'  
+        result = subprocess.Popen(cmd,shell=True,close_fds=True)
+        result.wait()
+    elif which_model == 'ruxianwaike': # 双卡乳腺外科推理
+        # 执行命令
+        thread1 = threading.Thread(target=pipeline4fuza.main, args=(model1,tokenizer1,key_id,file_path))
+        thread2 = threading.Thread(target=pipeline4simple.main, args=(model2,tokenizer2,ins_datas_v1201,key_id))
+        # 启动线程
+        thread1.start()
+        thread2.start()
+        # 等待线程完成
+        thread1.join()
+        thread2.join()
+        # 合并处理结果
+        cmd = 'python pipeline_total.py '+ key_id + ' \\'  
+        result = subprocess.Popen(cmd,shell=True,close_fds=True)
+        result.wait()
+    elif which_model == 'quankeshi':
+        global quankeshi_model,quankeshi_tokenizer
+        generate_out_dir = global_variable.get_value('generate_out_dir')
+        read_dir = os.path.join(generate_out_dir,keshi,zylsh)
+        now_out_dir = os.path.join(generate_out_dir,keshi,zylsh)
+        now_out_data_dir = os.path.join(generate_out_dir,keshi)
+        pipeline_wjc.main(quankeshi_model,quankeshi_tokenizer,ins_datas_v2024_0324,zylsh,now_out_dir)
+        postprocess(zylsh,keshi,read_dir,now_out_dir,now_out_data_dir)
+    
+    # 存储测试用例
+    if key_id not in keshi_zylsh[keshi]:
+        keshi_zylsh[keshi].append(key_id)
+    keshi_zylsh[keshi].sort()
+
+    print('结束')
+    sys.stdout.write = original_write
+    return gr.update(choices=keshi_zylsh[keshi],value=key_id)
+
+# 读取小结文件并展示
+def open_file(prefix, example_path = '演示示例'):
+    key_id = global_variable.get_value('key_id')
+    if prefix == '整体结果':
+        prefix=''
+    file_name = f"./{example_path}/{prefix}{key_id}.json"
+    if os.path.exists(file_name):
+        with open(file_name,'r',encoding='utf8') as f:
+            content = json.load(f)
+            content = json.dumps(content,indent=4,ensure_ascii=False)    
+        return content
+    else:
+        return '模型正在努力生成，请稍后再试^_^'
+
+# 清空'进度概览'页面的进度
+def reset_stdout():
+    global std_out_list
+    std_out_list = []
+    return ''
+
+# 导入医生小结
+def addDoctorExample(file):
+    for item in file:
+        src_file = item.name
+        with open(src_file,'r',encoding='utf-8') as f:
+            json_data = json.load(f)
+            key_id = next(iter(json_data))
+            # json_data[key_id] = json_data[key_id]['出院小结']
+            keshi = global_variable.get_value('keshi')
+            if key_id not in keshi_zylsh[keshi]:
+                keshi_zylsh[keshi].append(key_id)
+            keshi_zylsh[keshi].sort()
+        if which_model == 'ruxianwaike' or which_model == 'ruxianwaike_singlecuda':
+            with open(f'医生示例/{key_id}.json','w',encoding='utf-8') as f:
+                json.dump(json_data,f,indent=4,ensure_ascii=False)
+        elif which_model == 'quankeshi':
+            doctor_generated_path = global_variable.get_value('doctor_generated_path')
+            keshi = global_variable.get_value('keshi')
+            create_dir(os.path.join(doctor_generated_path,keshi,key_id))
+            with open(f'{doctor_generated_path}/{keshi}/{key_id}/{key_id}.json','w',encoding='utf-8') as f:
+                json.dump(json_data,f,indent=4,ensure_ascii=False)
+    return  gr.update(choices=keshi_zylsh[keshi],value=key_id)
+
+# 切换模式，溯源页面/医生小结页面
+def change_showing_mode(value,html_content,html_content_model,html_content_doctor,html_content_backtrack):
+
+    if value == '出院小结对比':
+        return gr.update(visible=True,value=html_content),gr.update(visible=False,value=html_content_model),gr.update(visible=True,value=html_content_doctor),gr.update(visible=False,value=html_content_backtrack)
+    elif value == '出院小结溯源':
+        return  gr.update(visible=False,value=html_content),gr.update(visible=True,value=html_content_model),gr.update(visible=False,value=html_content_doctor),gr.update(visible=True,value=html_content_backtrack)
+
+# 删除案例
+def delete_patient(key_id):
+    keshi = global_variable.get_value('keshi')
+    processed_out_dir = global_variable.get_value('processed_out_dir')
+    ins_out_dir = global_variable.get_value('ins_out_dir')
+    delete_dir(f'./{model_generated_path}/{keshi}/{key_id}')
+    delete_dir(f'./{doctor_generated_path}/{keshi}/{key_id}')
+    delete_dir(f'./{processed_out_dir}/{keshi}/{key_id}')
+    delete_dir(f'./{ins_out_dir}/{keshi}/{key_id}')
+    keshi_zylsh[keshi].remove(key_id)
+    return gr.update(choices=keshi_zylsh[keshi],value=keshi_zylsh[keshi][0])
+
+# 获得科室对应的病人清单
+def get_key_id_list(chinese_keshi):
+    keshi = chinese_keshi_to_keshi[chinese_keshi]
+    global_variable.set_value('keshi',keshi)
+    model_generated_path = global_variable.get_value('generate_out_dir')
+    # 如果发现文件夹下有新增或删减病理，重新获得zylsh列表
+    if len(keshi_zylsh[keshi]) != len(os.listdir(f'./{model_generated_path}/{keshi}')):
+        example_list = []
+        for zylsh in os.listdir(f'./{model_generated_path}/{keshi}'):
+            for filename in os.listdir(f'./{model_generated_path}/{keshi}/{zylsh}'):
+                pattern = r'^\d+\.json'
+                if re.match(pattern, filename) and filename.lower().endswith('.json'):
+                    example_list.append(filename[:-5])
+        # # 乳腺外科放最新的例子
+        # if keshi == 'ruxianwaike':
+        #     example_list = list(np.loadtxt(f'./流水号/{keshi}_新增源文件流水号_test_100.csv', delimiter=',',dtype=str))
+        example_list.sort()
+        keshi_zylsh[keshi] = example_list
+    return gr.update(choices=keshi_zylsh[keshi],value=keshi_zylsh[keshi][0])  
+
+# 读取js文件
+def read_head_js(file_path):
+    with open(file_path,'r') as f:
+        content = f.read()
+    return content
+
+def load_two_html_and_processedjson(key_id):
+    html_content,html_content_model,html_content_doctor,html_content_backtrack = global_variable.load_two_html(key_id)
+    processed_out_dir = global_variable.get_value('processed_out_dir')
+    keshi = global_variable.get_value('keshi')
+    processed_out_path = os.path.join(processed_out_dir,keshi, key_id, "合并.json")
+    processed_json = global_variable.read_json(processed_out_path)
+    return html_content,html_content_model,html_content_doctor,html_content_backtrack,processed_json
+
+head=read_head_js('./custom.js')
+
+if __name__ == '__main__':
+    global_variable._init()
+    global_variable.set_value('key_id','21012700000304')
+    global_variable.set_value('file_path','./processed/合并.json')
+    global_variable.set_value('keshi','ruxianwaike')
+    global_variable.set_value('processed_out_dir','./processed')
+    global_variable.set_value('ins_out_dir','./instructions')
+    global_variable.set_value('generate_out_dir','./model_generated')
+    global_variable.set_value('generate_out_dir','./model_generated_test')
+
+    # 用全科室模型还是乳腺外科科室模型 
+    # which_model选项：[ruxianwaike, ruxianwaike_singlecuda, quankeshi] 
+    # 分别代表 [双卡乳腺外科，单卡乳腺外科，单卡全科室]
+    which_model = 'quankeshi' 
+    # 空闲显卡列表，单卡时默认使用第0个值
+    cuda_DEVICE = ['cuda:1','cuda:6']
+
+    if which_model == 'quankeshi':
+        quankeshi_model,quankeshi_tokenizer = global_variable.load_model('model_wjc',cuda_DEVICE[0])
+        model_generated_path = global_variable.get_value('generate_out_dir')
+        global_variable.set_value('model_generated_path',model_generated_path)
+        global_variable.set_value('doctor_generated_path','doctor_generated')
+        doctor_generated_path = global_variable.get_value('doctor_generated_path')
+    elif which_model == 'ruxianwaike':
+        model1,tokenizer1 = global_variable.load_model('model1',cuda_DEVICE[0]) # 原始模型
+        model2,tokenizer2 = global_variable.load_model('model2',cuda_DEVICE[1]) # 训练后模型
+        model_generated_path = '演示示例'
+        doctor_generated_path = '医生示例'
+
+    global_variable.set_value('now_mode',which_model)
+
+    global std_out_list
+    std_out_list = []
+
+    # 处理化各科室病人列表
+    keshi_list = os.listdir(f'./{model_generated_path}')
+    chinese_keshi_to_keshi = {}
+    keshi_zylsh = {}
+    for keshi in keshi_list:
+        example_list = []
+        chinese_keshi_to_keshi[cons_chinese_keshis[keshi]] = keshi
+        for zylsh in os.listdir(f'./{model_generated_path}/{keshi}'):
+            for filename in os.listdir(f'./{model_generated_path}/{keshi}/{zylsh}'):
+                pattern = r'^\d+\.json'
+                if re.match(pattern, filename) and filename.lower().endswith('.json'):
+                    example_list.append(filename[:-5])
+        # # 乳腺外科放最新的例子
+        # if keshi == 'ruxianwaike':
+        #     example_list = list(np.loadtxt(f'./流水号/{keshi}_新增源文件流水号_test_100.csv', delimiter=',',dtype=str))
+        example_list.sort()
+        keshi_zylsh[keshi] = example_list
+    chinese_keshi_list = list(chinese_keshi_to_keshi.keys())
+    # print(example_list)
+    # example_list = ["19122700000134","19030600000321",
+    #                 "20010700000351","20102900000475","20122600000183"]
+    # model_html,doctor_html,backtracking_html = global_variable.load_two_html(example_list[5],model_generated_path,doctor_generated_path)
+
+    with gr.Blocks(css="custom.css",head=head) as demo:                
+        with gr.Row():
+            with gr.Column(scale=6,variant="panel"):
+                with gr.Tab("数据预览") as Tab1:
+                    file_content = gr.JSON(label="预览",elem_classes='container')
+                with gr.Tab("进度概览") as Tab2:
+                    user_input1 = gr.Textbox(show_label=False, placeholder="Input...",container=False,lines=40,max_lines=40,
+                        value=current_stdout(),every=1,elem_classes='container')
+                with gr.Tab("出院小结") as Tab3:
+                    with gr.Row():           
+                        with gr.Column(scale=2):
+                            html_content= gr.HTML(value="Callable",elem_classes='container1',label='大模型结果',visible=False) 
+                            html_content_model= gr.HTML(value="Callable",elem_classes='container1',label='大模型-溯源对比') 
+                        with gr.Column(scale=2):
+                            html_content_doctor = gr.HTML(value="Callable",elem_classes='container1',label='医生结果',visible=False)
+                            html_content_backtrack = gr.HTML(value="Callable",elem_classes='container1',label='溯源')
+                # with gr.Tab("患者文书") as Tab4:
+                #     file_content1 = gr.JSON(label="患者所有文书检查等资料",elem_classes='container')
+
+        with gr.Row(equal_height=True):
+            keshi_table_list = gr.Dropdown(chinese_keshi_list,value=chinese_keshi_list[0],label='科室',allow_custom_value=False,
+                                         container=False,show_label=False,min_width=60)
+            table_colomn_1 = gr.Dropdown(choices=None,label='病人',allow_custom_value=False,
+                                         container=False,show_label=False,min_width=60)
+            radio = gr.Radio(['出院小结对比','出院小结溯源'],value='出院小结溯源',show_label=False,container=False,scale=2)
+            addDoctorExample_button = gr.UploadButton("上传医生版出院小结", file_types=["file"],variant="primary",file_count='multiple')
+            upload_button = gr.UploadButton("上传原始材料", file_types=["file"],variant="primary",file_count='multiple')
+            submit_button = gr.Button(value="提交原始材料",variant="primary")
+            delete_button = gr.Button(value="删除用例")
+
+        upload_button.upload(upload_file, upload_button, file_content)
+        submit_button.click(generate_file,[],[table_colomn_1],show_progress=True)
+        delete_button.click(delete_patient,[table_colomn_1],[table_colomn_1],show_progress=True)
+        addDoctorExample_button.upload(addDoctorExample, addDoctorExample_button, [table_colomn_1])
+
+        keshi_table_list.change(get_key_id_list, [keshi_table_list],[table_colomn_1])
+        table_colomn_1.change(global_variable.load_two_html, [table_colomn_1],[html_content,html_content_model,html_content_doctor,html_content_backtrack])
+        # table_colomn_1.change(load_two_html_and_processedjson, [table_colomn_1],[html_content,html_content_model,html_content_doctor,html_content_backtrack,file_content1])
+        radio.change(change_showing_mode,[radio,html_content,html_content_model,html_content_doctor,html_content_backtrack],[html_content,html_content_model,html_content_doctor,html_content_backtrack])
+        
+    demo.queue().launch(show_api= False,share=False, server_name="0.0.0.0", server_port=7870, inbrowser=False)
