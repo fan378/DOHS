@@ -165,6 +165,7 @@ key_desps = {
 
 
 # 运行步骤
+run_yc.sh
+test.py
 
-# 评价指标计算
 
