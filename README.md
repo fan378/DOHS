@@ -2,7 +2,7 @@
 Discharge Summary
 # 指令微调
 
-# prompt
+# prompt优化
 key_desps = {
     "患者基本信息": [
         # 角色
