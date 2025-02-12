@@ -2,6 +2,7 @@
 # Discharge-Summary
 Discharge Summary
 # 指令微调
+```python
 To run our code, please install dependency packages.
 accelerate	    0.27.2
 deepspeed	    0.14.2
@@ -25,8 +26,52 @@ packaging	    23.2
 pyyaml      	6.0.1
 pandas	        1.5.3
 numpy	        1.23.4
+```
+
+# Code Structure
+
+# Quick start
+
+# Pre-training
+```python
+# go to the directory
+cd /train/LLaMA-Factory/ours-script/pretrain
+
+# get the dataset cache
+bash 1_get_cache.sh
+
+# start pre-training
+bash 2_start_pretrain.sh
+```
+
+# SFT
+```python
+# go to the directory
+cd /train/LLaMA-Factory/ours-script/sft
+
+# get the dataset cache of stage1 to stage4
+bash 1_chatglm_cache_stage1.sh
+bash 1_chatglm_cache_stage2.sh
+bash 1_chatglm_cache_stage3.sh
+bash 1_chatglm_cache_stage4.sh
+
+# start sft stage by stage
+bash 2_chatglm_train_stage1_lora.sh
+# Modify Configuration
+bash /train/LLaMA-Factory/ours-script/export_lora_model.sh
+bash 2_chatglm_train_stage2_lora.sh
+# Modify Configuration
+bash /train/LLaMA-Factory/ours-script/export_lora_model.sh
+bash 2_chatglm_train_stage3_lora.sh
+# Modify Configuration
+bash /train/LLaMA-Factory/ours-script/export_lora_model.sh
+bash 2_chatglm_train_stage4_lora.sh
+# Modify Configuration
+bash /train/LLaMA-Factory/ours-script/export_lora_model.sh
+```
 
 # prompt优化
+```python
 key_desps = {
     "患者基本信息": [
         # 角色
@@ -186,7 +231,7 @@ key_desps = {
         """
     ]
 }
-
+```
 
 # 运行步骤
 run_yc.sh
