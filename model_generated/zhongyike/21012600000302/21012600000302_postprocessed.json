@@ -1,0 +1,41 @@
+{
+    "21012600000302": {
+        "基本信息": {
+            "出院诊断": "输入数据过长，模型无法输出！",
+            "床号": "over_length",
+            "科别": "over_length",
+            "入院时间": "over_length",
+            "出院时间": "over_length",
+            "姓名": "over_length",
+            "性别": "over_length",
+            "年龄": "over_length",
+            "住院号": "over_length",
+            "入院诊断": "over_length"
+        },
+        "入院时简要病史": "over_length",
+        "体检摘要": "over_length",
+        "生命体征": {
+            "T": "over_length",
+            "P": "over_length",
+            "R": "over_length",
+            "BP高": "over_length",
+            "BP低": "over_length"
+        },
+        "住院期间医疗情况": "输入数据过长，模型无法输出！",
+        "出院时情况": "输入数据过长，模型无法输出！",
+        "病程与治疗情况": "输入数据过长，模型无法输出！",
+        "出院后用药建议": "输入数据过长，模型无法输出！",
+        "病人信息": {
+            "姓名": "over_length",
+            "性别": "over_length",
+            "科室": "over_length",
+            "床号": "over_length",
+            "住院号": "over_length",
+            "住院流水号": "21012600000302",
+            "年龄": "over_length",
+            "出生年月": "",
+            "入院时间": "over_length",
+            "出院时间": "over_length"
+        }
+    }
+}

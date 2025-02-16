@@ -1,0 +1,240 @@
+# Discharge-Summary
+Discharge Summary
+# Requirements
+# 指令微调
+```python
+To run our code, please install dependency packages.
+accelerate	    0.27.2
+deepspeed	    0.14.2
+fire	        0.5.0
+flash-attn	    2.5.8
+ninja	        1.11.1.1
+sentencepiece	0.1.99
+torch	        2.2.1
+vllm	        0.4.1
+peft	        0.10.0
+trl	            0.8.1
+datasets    	2.17.1	
+transformers	4.40.0	
+scipy	        1.12.0
+tiktoken    	0.6.0	
+protobuf	    3.20.3	
+pydantic    	2.6.1	
+matplotlib	    3.8.3	
+sse-starlette	2.0.0	
+packaging	    23.2	
+pyyaml      	6.0.1
+pandas	        1.5.3
+numpy	        1.23.4
+```
+
+# Code Structure
+
+# Quick start
+
+# Pre-training
+```python
+# go to the directory
+cd /train/LLaMA-Factory/ours-script/pretrain
+
+# get the dataset cache
+bash 1_get_cache.sh
+
+# start pre-training
+bash 2_start_pretrain.sh
+```
+
+# SFT
+```python
+# go to the directory
+cd /train/LLaMA-Factory/ours-script/sft
+
+# get the dataset cache of stage1 to stage4
+bash 1_chatglm_cache_stage1.sh
+bash 1_chatglm_cache_stage2.sh
+bash 1_chatglm_cache_stage3.sh
+bash 1_chatglm_cache_stage4.sh
+
+# start sft stage by stage
+bash 2_chatglm_train_stage1_lora.sh
+# Modify Configuration
+bash /train/LLaMA-Factory/ours-script/export_lora_model.sh
+bash 2_chatglm_train_stage2_lora.sh
+# Modify Configuration
+bash /train/LLaMA-Factory/ours-script/export_lora_model.sh
+bash 2_chatglm_train_stage3_lora.sh
+# Modify Configuration
+bash /train/LLaMA-Factory/ours-script/export_lora_model.sh
+bash 2_chatglm_train_stage4_lora.sh
+# Modify Configuration
+bash /train/LLaMA-Factory/ours-script/export_lora_model.sh
+```
+
+# prompt优化
+```python
+
+key_desps = {
+    "患者基本信息": [
+        # 角色
+        "你是一名医疗数据处理专家，负责提取患者的基本信息并生成结构化记录。",
+        
+        # 任务
+        "从患者输入的数据中提取基本信息，包括姓名、性别、年龄、住院号、床号、病区名称、入院日期、入院诊断等内容，同时根据医嘱信息推算患者的出院时间。",
+        
+        # 步骤（拆解）
+        "1. 从输入的数据中 **抽取** 患者的基本信息字段，包括姓名、性别、年龄、住院号、床号、病区名称、入院日期、入院诊断等；"
+        "2. 针对每个字段进行完整性检查，若字段缺失，则标记为‘缺失’，并在输出中添加说明；"
+        "3. 根据医嘱内容（如‘今日下午出院’等），通过日期信息进行 **推理**，计算出准确的出院时间，并补充到记录中；"
+        "4. 提取患者的生命体征数据（如血压、心率、血氧等），从多条记录中抽取最新结果，并生成简要摘要；"
+        "5. 综合所有信息，按照字段顺序生成清晰、规范化的基本信息输出。",
+        
+        # 输出的格式
+        """
+        患者基本信息：
+        - 姓名：XXX
+        - 性别：XXX
+        - 年龄：XXX
+        - 住院号：XXX
+        - 床号：XXX
+        - 病区名称：XXX
+        - 入院日期：YYYY-MM-DD
+        - 入院诊断：XXX
+        - 出院日期（推算）：YYYY-MM-DD
+        - 生命体征：
+          1. 血压：XXX
+          2. 心率：XXX
+          3. 血氧：XXX
+        """
+    ],
+
+    "出院诊断": [
+        # 角色
+        "你是一名医疗数据分析师，负责提取并校验患者的出院诊断信息。",
+        
+        # 任务
+        "从患者的诊断与病程记录中提取出院诊断信息，并确保诊断内容符合标准化要求。",
+        
+        # 步骤（拆解）
+        "1. 从患者出院记录中 **抽取** 核心诊断内容，确保名称符合标准化诊断描述；"
+        "2. 如果诊断信息中包含附加描述（如并发症或注释），需提取相关内容，并标注在诊断后的括号中；"
+        "3. 将诊断内容进行逻辑整理，去除冗余信息，确保结构清晰；"
+        "4. 输出最终的出院诊断记录，确保信息完整且规范化。",
+        
+        # 输出的格式
+        """
+        出院诊断：
+        - 出院诊断：XXX
+        - 补充描述：XXX（如适用）
+        """
+    ],
+
+    "住院期间主要检验检查结果": [
+        # 角色
+        "你是一名医疗信息分析师，负责提取患者住院期间的检验和检查数据，生成结构化报告。",
+        
+        # 任务
+        "提取住院期间的医疗数据，关注关键检验结果和影像检查内容，生成清晰的住院医疗情况总结。",
+        
+        # 步骤（拆解）
+        "1. **抽取** 患者住院期间的所有检验记录："
+        "   a. 提取正常检验数据，并仅保留最新结果；"
+        "   b. 提取异常检验数据，并完整保留相关记录和分析内容；"
+        "2. 从影像检查报告中 **抽取** 关键内容，包括影像类型（如CT、MRI）和核心检查结论；"
+        "3. 整理检验和检查结果，将数据逻辑化，形成结构化的住院期间检验检查总结；"
+        "4. 检查提取信息的准确性，确保结果无遗漏或逻辑错误。",
+        
+        # 输出的格式
+        """
+        住院期间主要检验检查结果：
+        - 检验信息：
+          1. 正常检验：XXX（最新结果）
+          2. 异常检验：XXX（完整记录）
+        - 影像检查：
+          - 类型：XXX
+          - 结论：XXX
+        """
+    ],
+
+    "病程与治疗情况": [
+        # 角色
+        "你是一名病程记录分析师，负责提取住院期间的治疗信息并生成医疗报告。",
+        
+        # 任务
+        "分析患者的病程记录，提取治疗方式（如手术、化疗等）和医疗报告中的病情描述，生成结构化的病程与治疗记录。",
+        
+        # 步骤（拆解）
+        "1. **判断** 患者是否接受了关键治疗（如手术、化疗等），提取相关治疗方式的名称、日期和结果；"
+        "2. **抽取** 医疗报告中的病情描述，重点关注病情变化及关键症状；"
+        "3. 将治疗信息和病情描述按照时间顺序整合，确保治疗记录与病情变化逻辑一致；"
+        "4. 对信息进行摘要处理，提炼出核心内容，生成清晰的结构化病程记录。",
+        
+        # 输出的格式
+        """
+        病程与治疗情况：
+        - 主要治疗方式：
+          1. 手术：XXX（有/无）
+          2. 化疗：XXX（有/无）
+        - 病情描述：XXX
+        - 医疗报告摘要：XXX
+        """
+    ],
+
+    "出院时情况": [
+        # 角色
+        "你是一名健康记录整理专家，负责总结患者的出院时健康状况。",
+        
+        # 任务
+        "从患者出院记录中提取健康状态信息，包括身体恢复、精神状态、伤口恢复情况等，生成出院健康摘要。",
+        
+        # 步骤（拆解）
+        "1. **判断** 出院记录中关于健康状况的描述，分析身体恢复、精神状态和伤口恢复情况；"
+        "2. 根据住院期间的病程变化，对患者的恢复趋势进行 **推理**（如完全恢复、部分恢复等）；"
+        "3. 将所有健康状态信息按照分类整理，并生成清晰的出院健康摘要。",
+        
+        # 输出的格式
+        """
+        出院时情况：
+        - 身体恢复：XXX
+        - 精神状态：XXX
+        - 伤口情况：XXX
+        """
+    ],
+
+    "出院后用药建议": [
+        # 角色
+        "你是一名医疗用药分析师，负责设计患者的出院后用药建议。",
+        
+        # 任务
+        "从患者病历中提取药物使用建议，包括常规用药和特殊用药的名称、剂量和使用注意事项，同时指定患者的随访科室。",
+        
+        # 步骤（拆解）
+        "1. **抽取** 患者的用药记录，包括常规用药（如维持性治疗）和特殊用药（如并发症治疗）；"
+        "2. **判断** 药物使用的合理性，分析剂量和使用方法是否需要调整；"
+        "3. 基于病历和诊断信息，对患者的随访需求进行 **推理或知识匹配**，并指定对应的随访科室；"
+        "4. 提取药物相关注意事项，标明风险点或特殊护理要求；"
+        "5. 整理所有用药建议及随访要求，生成规范化的结构化输出。",
+        
+        # 输出的格式
+        """
+        出院后用药建议：
+        - 常规用药：
+          1. 药物名称：XXX
+          2. 剂量：XXX
+          3. 用药时间：XXX
+        - 特殊用药：
+          1. 药物名称：XXX
+          2. 剂量：XXX
+          3. 用药时间：XXX
+        - 注意事项：
+          1. XXX
+          2. XXX
+        - 随访科室：XXX
+        """
+    ]
+}
+```
+
+# 运行步骤
+run_yc.sh
+
+
