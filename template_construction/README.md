@@ -221,4 +221,4 @@ key_desps = {
 }
 ```
 
-（3）最后将该模板拼接EMR-GPT。
+（3）最后将该模板得到的prompt在py_cyxj_2024_0324_change.py更新对应prompt
