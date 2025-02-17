@@ -1,4 +1,0 @@
-文件路径:/HL_user01/yc_ruxianwaike_test/2024_5_31出院小结完整演示_wjc版/评估/2_emr_6
-数据包含的科室:['ruxianwaike']
-患者基本信息
-93.98
