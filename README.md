@@ -58,7 +58,7 @@ bash 2_start_pretrain.sh
 # SFT
 ```python
 # go to the directory
-cd Optimized block/LLM optimization/train/LLaMA-Factory/ours-script/sft
+cd Optimized block/LLM optimization/trains/ours-script/sft
 
 # get the dataset cache of stage1 to stage4
 bash 1_chatglm_cache_stage1.sh
@@ -69,16 +69,16 @@ bash 1_chatglm_cache_stage4.sh
 # start sft stage by stage
 bash 2_chatglm_train_stage1_lora.sh
 # Modify Configuration
-bash /train/LLaMA-Factory/ours-script/export_lora_model.sh
+bash /trains/ours-script/export_lora_model.sh
 bash 2_chatglm_train_stage2_lora.sh
 # Modify Configuration
-bash /train/LLaMA-Factory/ours-script/export_lora_model.sh
+bash /trains/ours-script/export_lora_model.sh
 bash 2_chatglm_train_stage3_lora.sh
 # Modify Configuration
-bash /train/LLaMA-Factory/ours-script/export_lora_model.sh
+bash /trains/ours-script/export_lora_model.sh
 bash 2_chatglm_train_stage4_lora.sh
 # Modify Configuration
-bash /train/LLaMA-Factory/ours-script/export_lora_model.sh
+bash /trains/ours-script/export_lora_model.sh
 ```
 
 # Prompt optimization
