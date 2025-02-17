@@ -221,4 +221,4 @@ key_desps = {
 }
 ```
 
-（3）最后将该模板得到的prompt在py_cyxj_2024_0324_change.py更新对应prompt
+（3）最后将该模板得到的prompt在py_cyxj_2024_0324_change.py更新对应prompt，以此来完成对对长度和逻辑模板进行了处理，优化了prompt
