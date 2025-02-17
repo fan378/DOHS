@@ -4,6 +4,9 @@ Discharge summaries (DSs) are crucial in clinical healthcare, but existing resea
 (1) We propose a novel DOHS framework, including EMR-LLM instruction tuning and PHS strategies. EMR-GPT, as the first multi-department clinical business LLM, enhances the LLM's sensitivity to numerics by the design of six instruction tasks, effectively suppressing hallucinations.
 (2) We introduce a novel PHS strategy to optimize LH and LoH, controlling input length through subfield splitting, enhancing reasoning consistency with logical templates and a knowledge base, and suppressing hallucinations from long texts and logical combinations.
 (3) We validate the DOHS framework through large-scale experiments, with all results reaching SOTA performance. EMR-GPT achieves 95.78\% on the discharge status task, a 1.43\% improvement over pure manual reasoning, demonstrating the effectiveness of logical template combinations. This significantly suppresses hallucinations and enhances the accuracy and clinical usability of DSs.
+![framework](https://github.com/user-attachments/assets/2ec78978-7c83-44e1-a37a-1b9339aa83bc)
+
+
 # Requirements
 # 指令微调
 ```python
@@ -43,7 +46,7 @@ numpy	        1.23.4
 # Pre-training
 ```python
 # go to the directory
-cd /train/LLaMA-Factory/ours-script/pretrain
+cd Optimized block/LLM optimization/train/LLaMA-Factory/ours-script/pretrain
 
 # get the dataset cache
 bash 1_get_cache.sh
@@ -55,7 +58,7 @@ bash 2_start_pretrain.sh
 # SFT
 ```python
 # go to the directory
-cd /train/LLaMA-Factory/ours-script/sft
+cd Optimized block/LLM optimization/train/LLaMA-Factory/ours-script/sft
 
 # get the dataset cache of stage1 to stage4
 bash 1_chatglm_cache_stage1.sh
