@@ -246,6 +246,6 @@ key_desps = {
 ```
 
 # 运行步骤
-run_yc.sh
+运行 Complete process/run.sh 等待生成
 
 
