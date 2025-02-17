@@ -46,7 +46,7 @@ numpy	        1.23.4
 # Pre-training
 ```python
 # go to the directory
-cd Optimized block/LLM optimization/train/LLaMA-Factory/ours-script/pretrain
+cd Optimized block/LLM optimization/trains/ours-script/pretrain
 
 # get the dataset cache
 bash 1_get_cache.sh
