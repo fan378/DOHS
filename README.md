@@ -8,7 +8,7 @@ Discharge summaries (DSs) are crucial in clinical healthcare, but existing resea
 
 
 # Requirements
-# 指令微调
+# Instruction fine-tuning
 ```python
 To run our code, please install dependency packages.
 accelerate	    0.27.2
@@ -81,7 +81,7 @@ bash 2_chatglm_train_stage4_lora.sh
 bash /train/LLaMA-Factory/ours-script/export_lora_model.sh
 ```
 
-# prompt优化
+# Prompt optimization
 ```python
 
 key_desps = {
@@ -245,7 +245,7 @@ key_desps = {
 }
 ```
 
-# 运行步骤
-运行 Complete process/run.sh 等待生成
+# Run steps
+Run Complete process/run.sh and wait for the build to complete.
 
 
