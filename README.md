@@ -1,5 +1,9 @@
 # Discharge-Summary
-Discharge Summary
+Discharge summaries (DSs) are crucial in clinical healthcare, but existing research faces challenges such as inadequate optimization of large medical models, hallucinations caused by lengthy information, and difficulties in usage due to high customization. To address these issues, we propose a Dual Optimization Hallucination Suppression framework (DOHS), combining electronic medical record large language model (EMR-LLM) instruction tuning and Prompt Hallucination Suppression (PHS) strategies. First, the DOHS improves numerical sensitivity through six instruction tasks, then, splits sub-fields to focus on key information, and effectively handles the large volume of medical information. Finally, it uses logical template combinations to resolve the challenges of high customization, making it easier for doctors to use. Extensive experiments validate the effectiveness of our approach. 
+# Brief introduction
+(1) We propose a novel DOHS framework, including EMR-LLM instruction tuning and PHS strategies. EMR-GPT, as the first multi-department clinical business LLM, enhances the LLM's sensitivity to numerics by the design of six instruction tasks, effectively suppressing hallucinations.
+(2) We introduce a novel PHS strategy to optimize LH and LoH, controlling input length through subfield splitting, enhancing reasoning consistency with logical templates and a knowledge base, and suppressing hallucinations from long texts and logical combinations.
+(3) We validate the DOHS framework through large-scale experiments, with all results reaching SOTA performance. EMR-GPT achieves 95.78\% on the discharge status task, a 1.43\% improvement over pure manual reasoning, demonstrating the effectiveness of logical template combinations. This significantly suppresses hallucinations and enhances the accuracy and clinical usability of DSs.
 # Requirements
 # 指令微调
 ```python
@@ -29,8 +33,12 @@ numpy	        1.23.4
 ```
 
 # Code Structure
+./Complete process:The dictory of system code.
 
-# Quick start
+./Optimized block/LLM optimization:The directory of fine-tuning code.
+
+./Optimized block/Prompt optimization:The directory of length control and logic templates code.
+
 
 # Pre-training
 ```python
